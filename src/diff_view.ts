@@ -147,7 +147,7 @@ export default class SyncDiffView extends DiffView {
 	): vSyncItem[] {
 		const versionList: vSyncItem[] = [];
 		for (let i = 0; i <= versions.items.length - 1; i++) {
-			let version = versions.items[i];
+			const version = versions.items[i];
 			const date = new Date(version.ts);
 			const div = el.createDiv({
 				cls: ITEM_CLASS,
@@ -174,8 +174,7 @@ export default class SyncDiffView extends DiffView {
 						left
 					)) as vSyncItem;
 					await this.getSyncContent(clickedEl, left);
-					this.syncHistoryContentContainer.innerHTML =
-						this.getDiff() as string;
+					await this.updateDiffView();
 				} else {
 					const clickedEl = (await this.generateVersionListener(
 						div,
@@ -183,15 +182,14 @@ export default class SyncDiffView extends DiffView {
 						this.rightActive
 					)) as vSyncItem;
 					await this.getSyncContent(clickedEl);
-					this.syncHistoryContentContainer.innerHTML =
-						this.getDiff() as string;
+					await this.updateDiffView();
 				}
 			});
 		}
 		return versionList;
 	}
 
-	private async getSyncContent(clickedEl: vSyncItem, left: boolean = false) {
+	private async getSyncContent(clickedEl: vSyncItem, left = false) {
 		// get the content for the clicked HTML element
 		const getContent = this.plugin.diff_utils.getContent.bind(this);
 		if (left) {

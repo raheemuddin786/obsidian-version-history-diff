@@ -1,6 +1,6 @@
 import { createTwoFilesPatch } from 'diff';
 import { Diff2HtmlConfig, html } from 'diff2html';
-import { App, Modal, TFile } from 'obsidian';
+import { App, Modal, TFile, Component, MarkdownRenderer } from 'obsidian';
 import { SYNC_WARNING } from './constants';
 import FileModal from './file_modal';
 import type { vItem, vRecoveryItem, vSyncItem } from './interfaces';
@@ -17,10 +17,13 @@ export default abstract class DiffView extends Modal {
 	rightContent: string | Uint8Array;
 	leftContent: string | Uint8Array;
 	syncHistoryContentContainer: HTMLElement;
+	middleContainer: HTMLElement;
 	leftHistory: HTMLElement[];
 	rightHistory: HTMLElement[];
 	htmlConfig: Diff2HtmlConfig;
 	ids: { left: number; right: number };
+	comp: Component;
+	viewMode: 'raw' | 'rendered';
 
 	constructor(plugin: OpenSyncHistoryPlugin, app: App, file: TFile) {
 		super(app);
@@ -45,13 +48,19 @@ export default abstract class DiffView extends Modal {
 			outputFormat: this.plugin.settings.outputFormat,
 		};
 		this.containerEl.addClass('diff');
-		// @ts-ignore
-		this.syncHistoryContentContainer = this.contentEl.createDiv({
+		this.middleContainer = this.contentEl.createDiv({
+			cls: ['sync-history-middle-container', 'diff'],
+		});
+		this.syncHistoryContentContainer = this.middleContainer.createDiv({
 			cls: ['sync-history-content-container', 'diff'],
 		});
 		if (this.plugin.settings.colorBlind) {
 			this.syncHistoryContentContainer.addClass('colorblind');
 		}
+		this.viewMode = 'raw';
+		this.comp = new Component();
+		this.comp.load();
+		this.createToggleBar();
 	}
 
 	onOpen() {
@@ -111,8 +120,8 @@ export default abstract class DiffView extends Modal {
 		].includes(this.file.extension.toLowerCase());
 
 		if (isImage) {
-			const leftBlob = new Blob([leftUint8]);
-			const rightBlob = new Blob([rightUint8]);
+			const leftBlob = new Blob([leftUint8 as BlobPart]);
+			const rightBlob = new Blob([rightUint8 as BlobPart]);
 			const leftUrl = URL.createObjectURL(leftBlob);
 			const rightUrl = URL.createObjectURL(rightBlob);
 
@@ -179,7 +188,7 @@ export default abstract class DiffView extends Modal {
 
 	private createHistory(
 		el: HTMLElement,
-		left: boolean = false,
+		left = false,
 		warning: string
 	): HTMLElement[] {
 		const syncHistoryListContainer = el.createDiv({
@@ -206,16 +215,117 @@ export default abstract class DiffView extends Modal {
 		return [syncHistoryListContainer, syncHistoryList];
 	}
 
+	onClose() {
+		super.onClose();
+		this.comp.unload();
+	}
+
+	private createToggleBar(): void {
+		if (this.isBinaryFile()) {
+			return;
+		}
+
+		const toggleBar = this.middleContainer.createDiv({
+			cls: 'diff-toggle-bar',
+		});
+
+		const rawButton = toggleBar.createEl('button', {
+			cls: ['diff-toggle-btn', 'is-active'],
+			text: 'Raw Diff',
+		});
+
+		const renderButton = toggleBar.createEl('button', {
+			cls: ['diff-toggle-btn'],
+			text: 'Rendered',
+		});
+
+		rawButton.addEventListener('click', () => {
+			if (this.viewMode !== 'raw') {
+				this.viewMode = 'raw';
+				rawButton.addClass('is-active');
+				renderButton.removeClass('is-active');
+				this.updateDiffView();
+			}
+		});
+
+		renderButton.addEventListener('click', () => {
+			if (this.viewMode !== 'rendered') {
+				this.viewMode = 'rendered';
+				renderButton.addClass('is-active');
+				rawButton.removeClass('is-active');
+				this.updateDiffView();
+			}
+		});
+	}
+
+	public async updateDiffView(): Promise<void> {
+		this.syncHistoryContentContainer.empty();
+
+		if (this.isBinaryFile()) {
+			this.syncHistoryContentContainer.innerHTML = this.getDiff();
+			return;
+		}
+
+		if (this.viewMode === 'raw') {
+			this.syncHistoryContentContainer.innerHTML = this.getDiff();
+		} else {
+			const decoder = new TextDecoder('utf-8');
+			const leftStr =
+				this.leftContent instanceof Uint8Array
+					? decoder.decode(this.leftContent)
+					: this.leftContent;
+			const rightStr =
+				this.rightContent instanceof Uint8Array
+					? decoder.decode(this.rightContent)
+					: this.rightContent;
+
+			const renderedContainer =
+				this.syncHistoryContentContainer.createDiv({
+					cls: 'markdown-rendered-diff',
+				});
+
+			const leftSide = renderedContainer.createDiv({
+				cls: 'markdown-side',
+			});
+			leftSide.createEl('h4', { text: 'Old Version (Rendered)' });
+			const leftContentEl = leftSide.createDiv({
+				cls: 'rendered-content',
+			});
+			await MarkdownRenderer.render(
+				this.app,
+				leftStr as string,
+				leftContentEl,
+				this.file.path,
+				this.comp
+			);
+
+			const rightSide = renderedContainer.createDiv({
+				cls: 'markdown-side',
+			});
+			rightSide.createEl('h4', { text: 'New Version (Rendered)' });
+			const rightContentEl = rightSide.createDiv({
+				cls: 'rendered-content',
+			});
+			await MarkdownRenderer.render(
+				this.app,
+				rightStr as string,
+				rightContentEl,
+				this.file.path,
+				this.comp
+			);
+		}
+	}
+
 	public basicHtml(diff: string, diffType: string): void {
 		// set title
 		this.titleEl.setText(diffType);
-		// add diff to container
-		this.syncHistoryContentContainer.innerHTML = diff;
 
 		// add history lists and diff to DOM
 		this.contentEl.appendChild(this.leftHistory[0]);
-		this.contentEl.appendChild(this.syncHistoryContentContainer);
+		this.contentEl.appendChild(this.middleContainer);
 		this.contentEl.appendChild(this.rightHistory[0]);
+
+		this.updateDiffView();
 	}
 
 	public makeMoreGeneralHtml(): void {
@@ -231,7 +341,7 @@ export default abstract class DiffView extends Modal {
 		div: HTMLDivElement,
 		currentVList: vItem[],
 		currentActive: number,
-		left: boolean = false
+		left = false
 	): Promise<vItem> {
 		// the exact return type depends on the type of currentVList, it is either vSyncItem or vRecoveryItem
 		// formerly active left/right version

@@ -85,7 +85,7 @@ export default class GitDiffView extends DiffView {
 	appendGitVersions(
 		el: HTMLElement,
 		versions: DefaultLogFields[],
-		left: boolean = false
+		left = false
 	): vGitItem[] {
 		const versionList: vGitItem[] = [];
 		for (let i = 0; i < versions.length; i++) {
@@ -161,25 +161,30 @@ export default class GitDiffView extends DiffView {
 						left
 					)) as vGitItem;
 					if (this.leftActive === 0) {
-						this.leftContent = isBinary
-							? new Uint8Array(
-									await this.app.vault.readBinary(this.file)
-							  )
-							: await this.app.vault.read(this.file);
+						if (isBinary) {
+							this.leftContent = new Uint8Array(
+								await this.app.vault.readBinary(this.file)
+							);
+						} else {
+							this.leftContent = await this.app.vault.read(
+								this.file
+							);
+						}
 					} else {
-						this.leftContent = isBinary
-							? new Uint8Array(
-									await gitManager.git.binaryCatFile([
-										`${clickedEl.v.hash}:${clickedEl.v.fileName}`,
-									])
-							  )
-							: await gitManager.show(
-									clickedEl.v.hash,
-									clickedEl.v.fileName
-							  );
+						if (isBinary) {
+							this.leftContent = new Uint8Array(
+								await gitManager.git.binaryCatFile([
+									`${clickedEl.v.hash}:${clickedEl.v.fileName}`,
+								])
+							);
+						} else {
+							this.leftContent = await gitManager.show(
+								clickedEl.v.hash,
+								clickedEl.v.fileName
+							);
+						}
 					}
-					this.syncHistoryContentContainer.innerHTML =
-						await this.getDiff();
+					await this.updateDiffView();
 				} else {
 					const clickedEl = (await this.generateVersionListener(
 						div,
@@ -187,25 +192,30 @@ export default class GitDiffView extends DiffView {
 						this.rightActive
 					)) as vGitItem;
 					if (this.rightActive === 0) {
-						this.rightContent = isBinary
-							? new Uint8Array(
-									await this.app.vault.readBinary(this.file)
-							  )
-							: await this.app.vault.read(this.file);
+						if (isBinary) {
+							this.rightContent = new Uint8Array(
+								await this.app.vault.readBinary(this.file)
+							);
+						} else {
+							this.rightContent = await this.app.vault.read(
+								this.file
+							);
+						}
 					} else {
-						this.rightContent = isBinary
-							? new Uint8Array(
-									await gitManager.git.binaryCatFile([
-										`${clickedEl.v.hash}:${clickedEl.v.fileName}`,
-									])
-							  )
-							: await gitManager.show(
-									clickedEl.v.hash,
-									clickedEl.v.fileName
-							  );
+						if (isBinary) {
+							this.rightContent = new Uint8Array(
+								await gitManager.git.binaryCatFile([
+									`${clickedEl.v.hash}:${clickedEl.v.fileName}`,
+								])
+							);
+						} else {
+							this.rightContent = await gitManager.show(
+								clickedEl.v.hash,
+								clickedEl.v.fileName
+							);
+						}
 					}
-					this.syncHistoryContentContainer.innerHTML =
-						await this.getDiff();
+					await this.updateDiffView();
 				}
 			});
 		}

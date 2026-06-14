@@ -57,8 +57,12 @@ export default class RecoveryDiffView extends DiffView {
 		}
 
 		[this.leftContent, this.rightContent] = [
-			this.versions[1].data,
-			this.versions[0].data,
+			typeof this.versions[1].data === 'string'
+				? this.versions[1].data
+				: new Uint8Array(this.versions[1].data),
+			typeof this.versions[0].data === 'string'
+				? this.versions[0].data
+				: new Uint8Array(this.versions[0].data),
 		];
 	}
 
@@ -84,7 +88,7 @@ export default class RecoveryDiffView extends DiffView {
 	private appendRecoveryVersions(
 		el: HTMLElement,
 		versions: recResult[],
-		left: boolean = false
+		left = false
 	): vRecoveryItem[] {
 		const versionList: vRecoveryItem[] = [];
 		for (let i = 0; i < versions.length; i++) {
@@ -93,7 +97,7 @@ export default class RecoveryDiffView extends DiffView {
 			if (i === 0) {
 				date = new Date();
 			}
-			let div = el.createDiv({
+			const div = el.createDiv({
 				cls: ITEM_CLASS,
 				attr: {
 					id: left ? this.ids.left : this.ids.right,
@@ -121,18 +125,22 @@ export default class RecoveryDiffView extends DiffView {
 						this.leftActive,
 						left
 					)) as vRecoveryItem;
-					this.leftContent = version.data;
-					this.syncHistoryContentContainer.innerHTML =
-						this.getDiff() as string;
+					this.leftContent =
+						typeof version.data === 'string'
+							? version.data
+							: new Uint8Array(version.data);
+					await this.updateDiffView();
 				} else {
 					const clickedEl = (await this.generateVersionListener(
 						div,
 						this.rightVList,
 						this.rightActive
 					)) as vRecoveryItem;
-					this.rightContent = version.data;
-					this.syncHistoryContentContainer.innerHTML =
-						this.getDiff() as string;
+					this.rightContent =
+						typeof version.data === 'string'
+							? version.data
+							: new Uint8Array(version.data);
+					await this.updateDiffView();
 				}
 			});
 		}
