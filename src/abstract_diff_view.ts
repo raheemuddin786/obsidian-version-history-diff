@@ -1,4 +1,4 @@
-import { createTwoFilesPatch, diffWordsWithSpace } from 'diff';
+import { createTwoFilesPatch, diffArrays } from 'diff';
 import { Diff2HtmlConfig, html } from 'diff2html';
 import { App, Modal, TFile, Component, MarkdownRenderer } from 'obsidian';
 import { SYNC_WARNING } from './constants';
@@ -279,31 +279,88 @@ export default abstract class DiffView extends Modal {
 					? decoder.decode(this.rightContent)
 					: this.rightContent;
 
-			const diffResult = diffWordsWithSpace(leftStr, rightStr);
+			// Render both markdowns to temporary containers
+			const tempLeftDiv = document.createElement('div');
+			const tempRightDiv = document.createElement('div');
 
-			const leftDiffMarkdown = diffResult
-				.map((change) => {
-					if (change.added) {
-						return '';
-					}
-					if (change.removed) {
-						return `<del class="diff-rendered-deleted">${change.value}</del>`;
-					}
-					return change.value;
-				})
-				.join('');
+			await MarkdownRenderer.render(
+				this.app,
+				leftStr,
+				tempLeftDiv,
+				this.file.path,
+				this.comp
+			);
 
-			const rightDiffMarkdown = diffResult
-				.map((change) => {
-					if (change.removed) {
-						return '';
+			await MarkdownRenderer.render(
+				this.app,
+				rightStr,
+				tempRightDiv,
+				this.file.path,
+				this.comp
+			);
+
+			const leftHtml = tempLeftDiv.innerHTML;
+			const rightHtml = tempRightDiv.innerHTML;
+
+			// Tokenize HTML: keep tags intact, split text into words/whitespace/punctuation
+			const tokenizeHtml = (htmlStr: string): string[] => {
+				const tokens: string[] = [];
+				const regex = /(<[^>]+>|[^<]+)/g;
+				let match;
+				while ((match = regex.exec(htmlStr)) !== null) {
+					const token = match[0];
+					if (token.startsWith('<')) {
+						tokens.push(token);
+					} else {
+						const textRegex = /(\w+|[^\w\s]+|\s+)/g;
+						let textMatch;
+						while ((textMatch = textRegex.exec(token)) !== null) {
+							tokens.push(textMatch[0]);
+						}
 					}
-					if (change.added) {
-						return `<ins class="diff-rendered-added">${change.value}</ins>`;
+				}
+				return tokens;
+			};
+
+			const leftTokens = tokenizeHtml(leftHtml);
+			const rightTokens = tokenizeHtml(rightHtml);
+
+			const diffResult = diffArrays(leftTokens, rightTokens);
+
+			const leftDiffHtmlParts: string[] = [];
+			const rightDiffHtmlParts: string[] = [];
+
+			for (const change of diffResult) {
+				if (change.added) {
+					for (const token of change.value) {
+						if (token.startsWith('<')) {
+							rightDiffHtmlParts.push(token);
+						} else {
+							rightDiffHtmlParts.push(
+								`<ins class="diff-rendered-added">${token}</ins>`
+							);
+						}
 					}
-					return change.value;
-				})
-				.join('');
+				} else if (change.removed) {
+					for (const token of change.value) {
+						if (token.startsWith('<')) {
+							leftDiffHtmlParts.push(token);
+						} else {
+							leftDiffHtmlParts.push(
+								`<del class="diff-rendered-deleted">${token}</del>`
+							);
+						}
+					}
+				} else {
+					for (const token of change.value) {
+						leftDiffHtmlParts.push(token);
+						rightDiffHtmlParts.push(token);
+					}
+				}
+			}
+
+			const finalLeftHtml = leftDiffHtmlParts.join('');
+			const finalRightHtml = rightDiffHtmlParts.join('');
 
 			const renderedContainer = this.diffContentEl.createDiv({
 				cls: 'markdown-rendered-diff',
@@ -316,13 +373,7 @@ export default abstract class DiffView extends Modal {
 			const leftContentEl = leftSide.createDiv({
 				cls: 'rendered-content',
 			});
-			await MarkdownRenderer.render(
-				this.app,
-				leftDiffMarkdown,
-				leftContentEl,
-				this.file.path,
-				this.comp
-			);
+			leftContentEl.innerHTML = finalLeftHtml;
 
 			const rightSide = renderedContainer.createDiv({
 				cls: 'markdown-side',
@@ -331,13 +382,7 @@ export default abstract class DiffView extends Modal {
 			const rightContentEl = rightSide.createDiv({
 				cls: 'rendered-content',
 			});
-			await MarkdownRenderer.render(
-				this.app,
-				rightDiffMarkdown,
-				rightContentEl,
-				this.file.path,
-				this.comp
-			);
+			rightContentEl.innerHTML = finalRightHtml;
 
 			let isScrolling = false;
 			leftSide.addEventListener('scroll', () => {
