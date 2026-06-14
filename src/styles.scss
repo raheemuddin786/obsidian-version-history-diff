@@ -731,6 +731,22 @@ mode from @SlRvb, which fall under the same license (MIT license, @kometenstaub 
 			p {
 				margin-bottom: 1em;
 			}
+
+			del.diff-rendered-deleted {
+				background-color: var(--sync-delete-bg);
+				color: var(--text-normal);
+				text-decoration: line-through;
+				padding: 0 2px;
+				border-radius: 2px;
+			}
+
+			ins.diff-rendered-added {
+				background-color: var(--sync-insert-bg);
+				color: var(--text-normal);
+				text-decoration: none;
+				padding: 0 2px;
+				border-radius: 2px;
+			}
 		}
 	}
 }

@@ -1,4 +1,4 @@
-import { createTwoFilesPatch } from 'diff';
+import { createTwoFilesPatch, diffWordsWithSpace } from 'diff';
 import { Diff2HtmlConfig, html } from 'diff2html';
 import { App, Modal, TFile, Component, MarkdownRenderer } from 'obsidian';
 import { SYNC_WARNING } from './constants';
@@ -279,6 +279,32 @@ export default abstract class DiffView extends Modal {
 					? decoder.decode(this.rightContent)
 					: this.rightContent;
 
+			const diffResult = diffWordsWithSpace(leftStr, rightStr);
+
+			const leftDiffMarkdown = diffResult
+				.map((change) => {
+					if (change.added) {
+						return '';
+					}
+					if (change.removed) {
+						return `<del class="diff-rendered-deleted">${change.value}</del>`;
+					}
+					return change.value;
+				})
+				.join('');
+
+			const rightDiffMarkdown = diffResult
+				.map((change) => {
+					if (change.removed) {
+						return '';
+					}
+					if (change.added) {
+						return `<ins class="diff-rendered-added">${change.value}</ins>`;
+					}
+					return change.value;
+				})
+				.join('');
+
 			const renderedContainer = this.diffContentEl.createDiv({
 				cls: 'markdown-rendered-diff',
 			});
@@ -292,7 +318,7 @@ export default abstract class DiffView extends Modal {
 			});
 			await MarkdownRenderer.render(
 				this.app,
-				leftStr as string,
+				leftDiffMarkdown,
 				leftContentEl,
 				this.file.path,
 				this.comp
@@ -307,7 +333,7 @@ export default abstract class DiffView extends Modal {
 			});
 			await MarkdownRenderer.render(
 				this.app,
-				rightStr as string,
+				rightDiffMarkdown,
 				rightContentEl,
 				this.file.path,
 				this.comp
