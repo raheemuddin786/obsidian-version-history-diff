@@ -72,7 +72,7 @@ export interface item {
 export interface recResult {
 	path: string;
 	ts: number;
-	data: string;
+	data: string | ArrayBuffer;
 }
 
 export interface vItem {
@@ -84,7 +84,7 @@ export interface vSyncItem extends vItem {
 }
 
 export interface vRecoveryItem extends vItem {
-	data: string;
+	data: string | ArrayBuffer;
 }
 
 export interface vGitItem extends vItem {

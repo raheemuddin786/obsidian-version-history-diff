@@ -83,26 +83,63 @@ export default abstract class DiffView extends Modal {
 	abstract appendVersions(): void;
 
 	protected isBinaryFile(): boolean {
-		const binaryExtensions = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'webp', 'pdf', 'zip'];
-		return binaryExtensions.includes(this.file.extension);
+		return this.plugin.diff_utils.isBinaryFile(this.file.name);
 	}
 
 	protected getBinaryPreview(): string {
-		const leftBlob = new Blob([this.leftContent as Uint8Array]);
-		const rightBlob = new Blob([this.rightContent as Uint8Array]);
-		const leftUrl = URL.createObjectURL(leftBlob);
-		const rightUrl = URL.createObjectURL(rightBlob);
-		
-		return `<div class="binary-diff">
-			<div class="binary-side">
-				<h4>Old Version</h4>
-				<img src="${leftUrl}" style="max-width: 100%;" />
-			</div>
-			<div class="binary-side">
-				<h4>New Version</h4>
-				<img src="${rightUrl}" style="max-width: 100%;" />
-			</div>
-		</div>`;
+		const toUint8Array = (
+			content: string | Uint8Array | ArrayBuffer
+		): Uint8Array => {
+			if (content instanceof Uint8Array) return content;
+			if (content instanceof ArrayBuffer) return new Uint8Array(content);
+			if (typeof content === 'string')
+				return new TextEncoder().encode(content);
+			return new Uint8Array();
+		};
+
+		const leftUint8 = toUint8Array(this.leftContent);
+		const rightUint8 = toUint8Array(this.rightContent);
+
+		const isImage = [
+			'png',
+			'jpg',
+			'jpeg',
+			'gif',
+			'bmp',
+			'svg',
+			'webp',
+		].includes(this.file.extension.toLowerCase());
+
+		if (isImage) {
+			const leftBlob = new Blob([leftUint8]);
+			const rightBlob = new Blob([rightUint8]);
+			const leftUrl = URL.createObjectURL(leftBlob);
+			const rightUrl = URL.createObjectURL(rightBlob);
+
+			return `<div class="binary-diff">
+				<div class="binary-side">
+					<h4>Old Version</h4>
+					<img src="${leftUrl}" style="max-width: 100%;" />
+				</div>
+				<div class="binary-side">
+					<h4>New Version</h4>
+					<img src="${rightUrl}" style="max-width: 100%;" />
+				</div>
+			</div>`;
+		} else {
+			return `<div class="binary-diff">
+				<div class="binary-side">
+					<h4>Old Version</h4>
+					<div class="binary-fallback-msg">Visual diff not available for this binary format.</div>
+					<div class="u-muted">Size: ${(leftUint8.length / 1024).toFixed(2)} KB</div>
+				</div>
+				<div class="binary-side">
+					<h4>New Version</h4>
+					<div class="binary-fallback-msg">Visual diff not available for this binary format.</div>
+					<div class="u-muted">Size: ${(rightUint8.length / 1024).toFixed(2)} KB</div>
+				</div>
+			</div>`;
+		}
 	}
 
 	public getDiff(): string {
@@ -111,8 +148,14 @@ export default abstract class DiffView extends Modal {
 		}
 
 		const decoder = new TextDecoder('utf-8');
-		const leftStr = this.leftContent instanceof Uint8Array ? decoder.decode(this.leftContent) : this.leftContent;
-		const rightStr = this.rightContent instanceof Uint8Array ? decoder.decode(this.rightContent) : this.rightContent;
+		const leftStr =
+			this.leftContent instanceof Uint8Array
+				? decoder.decode(this.leftContent)
+				: this.leftContent;
+		const rightStr =
+			this.rightContent instanceof Uint8Array
+				? decoder.decode(this.rightContent)
+				: this.rightContent;
 
 		// the second type is needed for the Git view, it reimplements getDiff
 		// get diff

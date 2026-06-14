@@ -51,12 +51,21 @@ export default class GitDiffView extends DiffView {
 		});
 		this.versions.push(...gitVersions);
 		const diskContent = this.isBinaryFile()
-			? await this.app.vault.readBinary(this.file)
+			? new Uint8Array(await this.app.vault.readBinary(this.file))
 			: await this.app.vault.read(this.file);
-		const latestCommit = await gitManager.show(
-			this.versions[1].hash,
-			this.file.path
-		);
+		let latestCommit: string | Uint8Array;
+		if (this.isBinaryFile()) {
+			latestCommit = new Uint8Array(
+				await gitManager.git.binaryCatFile([
+					`${this.versions[1].hash}:${this.file.path}`,
+				])
+			);
+		} else {
+			latestCommit = await gitManager.show(
+				this.versions[1].hash,
+				this.file.path
+			);
+		}
 		[this.leftContent, this.rightContent] = [latestCommit, diskContent];
 	}
 
@@ -141,6 +150,9 @@ export default class GitDiffView extends DiffView {
 				v: version,
 			});
 			div.addEventListener('click', async () => {
+				const isBinary = this.isBinaryFile();
+				const gitManager =
+					this.app.plugins.plugins['obsidian-git'].gitManager;
 				if (left) {
 					const clickedEl = (await this.generateVersionListener(
 						div,
@@ -149,14 +161,22 @@ export default class GitDiffView extends DiffView {
 						left
 					)) as vGitItem;
 					if (this.leftActive === 0) {
-						this.leftContent = await this.app.vault.read(this.file);
+						this.leftContent = isBinary
+							? new Uint8Array(
+									await this.app.vault.readBinary(this.file)
+							  )
+							: await this.app.vault.read(this.file);
 					} else {
-						this.leftContent = await this.app.plugins.plugins[
-							'obsidian-git'
-						].gitManager.show(
-							clickedEl.v.hash,
-							clickedEl.v.fileName
-						);
+						this.leftContent = isBinary
+							? new Uint8Array(
+									await gitManager.git.binaryCatFile([
+										`${clickedEl.v.hash}:${clickedEl.v.fileName}`,
+									])
+							  )
+							: await gitManager.show(
+									clickedEl.v.hash,
+									clickedEl.v.fileName
+							  );
 					}
 					this.syncHistoryContentContainer.innerHTML =
 						await this.getDiff();
@@ -167,16 +187,22 @@ export default class GitDiffView extends DiffView {
 						this.rightActive
 					)) as vGitItem;
 					if (this.rightActive === 0) {
-						this.rightContent = await this.app.vault.read(
-							this.file
-						);
+						this.rightContent = isBinary
+							? new Uint8Array(
+									await this.app.vault.readBinary(this.file)
+							  )
+							: await this.app.vault.read(this.file);
 					} else {
-						this.rightContent = await this.app.plugins.plugins[
-							'obsidian-git'
-						].gitManager.show(
-							clickedEl.v.hash,
-							clickedEl.v.fileName
-						);
+						this.rightContent = isBinary
+							? new Uint8Array(
+									await gitManager.git.binaryCatFile([
+										`${clickedEl.v.hash}:${clickedEl.v.fileName}`,
+									])
+							  )
+							: await gitManager.show(
+									clickedEl.v.hash,
+									clickedEl.v.fileName
+							  );
 					}
 					this.syncHistoryContentContainer.innerHTML =
 						await this.getDiff();

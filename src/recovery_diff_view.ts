@@ -33,7 +33,7 @@ export default class RecoveryDiffView extends DiffView {
 			.transaction('backups', 'readonly')
 			.store.index('path')
 			.getAll();
-		let fileContent;
+		let fileContent: string | ArrayBuffer;
 		if (this.isBinaryFile()) {
 			fileContent = await this.app.vault.readBinary(this.file);
 		} else {

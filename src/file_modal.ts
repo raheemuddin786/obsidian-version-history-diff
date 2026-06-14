@@ -61,7 +61,9 @@ export default class FileModal extends Modal {
 		if (this.syncFile instanceof Uint8Array) {
 			const blob = new Blob([this.syncFile]);
 			const url = URL.createObjectURL(blob);
-			el.createEl('img', { attr: { src: url, style: 'max-width: 100%;' } });
+			el.createEl('img', {
+				attr: { src: url, style: 'max-width: 100%;' },
+			});
 			switchButton.hide();
 		} else {
 			switchButton.addEventListener('click', () => {
@@ -92,7 +94,10 @@ export default class FileModal extends Modal {
 
 			restoreButton.addEventListener('click', () => {
 				(async () => {
-					await this.app.vault.modify(this.file, this.syncFile as string);
+					await this.app.vault.modify(
+						this.file,
+						this.syncFile as string
+					);
 				})();
 				new Notice(
 					`The ${this.file.basename} file has been overwritten with the selected version.`

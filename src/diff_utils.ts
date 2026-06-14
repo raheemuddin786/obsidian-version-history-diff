@@ -28,4 +28,20 @@ export default class DiffUtils {
 			);
 		return new Uint8Array(content);
 	}
+
+	isBinaryFile(filename: string): boolean {
+		const extension = filename.split('.').pop()?.toLowerCase() || '';
+		const binaryExtensions = [
+			'png',
+			'jpg',
+			'jpeg',
+			'gif',
+			'bmp',
+			'svg',
+			'webp',
+			'pdf',
+			'zip',
+		];
+		return binaryExtensions.includes(extension);
+	}
 }
