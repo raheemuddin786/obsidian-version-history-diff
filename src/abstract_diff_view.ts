@@ -338,6 +338,25 @@ export default abstract class DiffView extends Modal {
 				this.file.path,
 				this.comp
 			);
+
+			let isScrolling = false;
+			leftSide.addEventListener('scroll', () => {
+				if (!isScrolling) {
+					isScrolling = true;
+					rightSide.scrollTop = leftSide.scrollTop;
+					rightSide.scrollLeft = leftSide.scrollLeft;
+					isScrolling = false;
+				}
+			});
+
+			rightSide.addEventListener('scroll', () => {
+				if (!isScrolling) {
+					isScrolling = true;
+					leftSide.scrollTop = rightSide.scrollTop;
+					leftSide.scrollLeft = rightSide.scrollLeft;
+					isScrolling = false;
+				}
+			});
 		}
 	}
 
