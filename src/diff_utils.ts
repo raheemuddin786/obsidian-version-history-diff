@@ -21,13 +21,11 @@ export default class DiffUtils {
 		return await this.instance.getHistory(file.path, uid);
 	}
 
-	async getContent(uid: number): Promise<string> {
+	async getContent(uid: number): Promise<Uint8Array> {
 		const content =
 			await this.app.internalPlugins.plugins.sync.instance.getContentForVersion(
 				uid
 			);
-		const textDecoder = new TextDecoder('utf-8');
-		const text = textDecoder.decode(new Uint8Array(content));
-		return text;
+		return new Uint8Array(content);
 	}
 }

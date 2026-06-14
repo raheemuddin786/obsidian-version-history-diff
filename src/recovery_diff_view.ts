@@ -33,7 +33,12 @@ export default class RecoveryDiffView extends DiffView {
 			.transaction('backups', 'readonly')
 			.store.index('path')
 			.getAll();
-		const fileContent = await this.app.vault.read(this.file);
+		let fileContent;
+		if (this.isBinaryFile()) {
+			fileContent = await this.app.vault.readBinary(this.file);
+		} else {
+			fileContent = await this.app.vault.read(this.file);
+		}
 		// correct date is calculated later
 		this.versions.push({ path: this.file.path, ts: 0, data: fileContent });
 		const len = fileRecovery.length - 1;

@@ -14,8 +14,8 @@ export default abstract class DiffView extends Modal {
 	rightVList: vItem[];
 	leftActive: number;
 	rightActive: number;
-	rightContent: string;
-	leftContent: string;
+	rightContent: string | Uint8Array;
+	leftContent: string | Uint8Array;
 	syncHistoryContentContainer: HTMLElement;
 	leftHistory: HTMLElement[];
 	rightHistory: HTMLElement[];
@@ -82,14 +82,45 @@ export default abstract class DiffView extends Modal {
 
 	abstract appendVersions(): void;
 
+	protected isBinaryFile(): boolean {
+		const binaryExtensions = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'webp', 'pdf', 'zip'];
+		return binaryExtensions.includes(this.file.extension);
+	}
+
+	protected getBinaryPreview(): string {
+		const leftBlob = new Blob([this.leftContent as Uint8Array]);
+		const rightBlob = new Blob([this.rightContent as Uint8Array]);
+		const leftUrl = URL.createObjectURL(leftBlob);
+		const rightUrl = URL.createObjectURL(rightBlob);
+		
+		return `<div class="binary-diff">
+			<div class="binary-side">
+				<h4>Old Version</h4>
+				<img src="${leftUrl}" style="max-width: 100%;" />
+			</div>
+			<div class="binary-side">
+				<h4>New Version</h4>
+				<img src="${rightUrl}" style="max-width: 100%;" />
+			</div>
+		</div>`;
+	}
+
 	public getDiff(): string {
+		if (this.isBinaryFile()) {
+			return this.getBinaryPreview();
+		}
+
+		const decoder = new TextDecoder('utf-8');
+		const leftStr = this.leftContent instanceof Uint8Array ? decoder.decode(this.leftContent) : this.leftContent;
+		const rightStr = this.rightContent instanceof Uint8Array ? decoder.decode(this.rightContent) : this.rightContent;
+
 		// the second type is needed for the Git view, it reimplements getDiff
 		// get diff
 		const uDiff = createTwoFilesPatch(
 			this.file.basename,
 			this.file.basename,
-			this.leftContent,
-			this.rightContent
+			leftStr as string,
+			rightStr as string
 		);
 
 		// create HTML from diff

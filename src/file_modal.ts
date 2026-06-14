@@ -18,7 +18,7 @@ export default class FileModal extends Modal {
 	constructor(
 		private plugin: OpenSyncHistoryPlugin,
 		public app: App,
-		private syncFile: string,
+		private syncFile: string | Uint8Array,
 		private file: TFile,
 		private warning: string
 	) {
@@ -58,48 +58,55 @@ export default class FileModal extends Modal {
 
 		const el = this.contentEl.createDiv();
 
-		switchButton.addEventListener('click', () => {
-			if (!this.raw) {
-				el.empty();
-				const textArea = el.createEl('textarea', {
-					text: this.syncFile,
-					attr: { spellcheck: false },
-					cls: 'plain-text-area',
-				});
-				this.raw = !this.raw;
-				switchButton.innerText = 'Show Reading view';
-			} else {
-				this.raw = !this.raw;
-				(async () => {
+		if (this.syncFile instanceof Uint8Array) {
+			const blob = new Blob([this.syncFile]);
+			const url = URL.createObjectURL(blob);
+			el.createEl('img', { attr: { src: url, style: 'max-width: 100%;' } });
+			switchButton.hide();
+		} else {
+			switchButton.addEventListener('click', () => {
+				if (!this.raw) {
 					el.empty();
-					await MarkdownRenderer.render(
-						this.app,
-						this.syncFile,
-						el,
-						this.file.path,
-						this.comp
-					);
+					const textArea = el.createEl('textarea', {
+						text: this.syncFile as string,
+						attr: { spellcheck: false },
+						cls: 'plain-text-area',
+					});
+					this.raw = !this.raw;
+					switchButton.innerText = 'Show Reading view';
+				} else {
+					this.raw = !this.raw;
+					(async () => {
+						el.empty();
+						await MarkdownRenderer.render(
+							this.app,
+							this.syncFile as string,
+							el,
+							this.file.path,
+							this.comp
+						);
+					})();
+					switchButton.innerText = 'Show raw text';
+				}
+			});
+
+			restoreButton.addEventListener('click', () => {
+				(async () => {
+					await this.app.vault.modify(this.file, this.syncFile as string);
 				})();
-				switchButton.innerText = 'Show raw text';
-			}
-		});
+				new Notice(
+					`The ${this.file.basename} file has been overwritten with the selected version.`
+				);
+				this.close();
+			});
 
-		restoreButton.addEventListener('click', () => {
-			(async () => {
-				await this.app.vault.modify(this.file, this.syncFile);
-			})();
-			new Notice(
-				`The ${this.file.basename} file has been overwritten with the selected version.`
+			await MarkdownRenderer.render(
+				this.app,
+				this.syncFile as string,
+				el,
+				this.file.path,
+				this.comp
 			);
-			this.close();
-		});
-
-		await MarkdownRenderer.render(
-			this.app,
-			this.syncFile,
-			el,
-			this.file.path,
-			this.comp
-		);
+		}
 	}
 }

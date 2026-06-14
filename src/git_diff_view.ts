@@ -50,7 +50,9 @@ export default class GitDiffView extends DiffView {
 			fileName: this.file.name,
 		});
 		this.versions.push(...gitVersions);
-		const diskContent = await this.app.vault.read(this.file);
+		const diskContent = this.isBinaryFile()
+			? await this.app.vault.readBinary(this.file)
+			: await this.app.vault.read(this.file);
 		const latestCommit = await gitManager.show(
 			this.versions[1].hash,
 			this.file.path
