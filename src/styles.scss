@@ -681,12 +681,17 @@ mode from @SlRvb, which fall under the same license (MIT license, @kometenstaub 
 	}
 }
 
-.sync-history-middle-container {
-	display: flex;
-	flex-direction: column;
+.sync-history-content-container.diff {
+	display: flex !important;
+	flex-direction: column !important;
+	overflow: hidden !important;
+}
+
+.diff-content-container-inner {
 	flex-grow: 1;
 	height: 100%;
-	overflow: hidden;
+	width: 100%;
+	overflow: auto;
 }
 
 .markdown-rendered-diff {

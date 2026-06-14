@@ -17,7 +17,7 @@ export default abstract class DiffView extends Modal {
 	rightContent: string | Uint8Array;
 	leftContent: string | Uint8Array;
 	syncHistoryContentContainer: HTMLElement;
-	middleContainer: HTMLElement;
+	diffContentEl: HTMLElement;
 	leftHistory: HTMLElement[];
 	rightHistory: HTMLElement[];
 	htmlConfig: Diff2HtmlConfig;
@@ -48,19 +48,19 @@ export default abstract class DiffView extends Modal {
 			outputFormat: this.plugin.settings.outputFormat,
 		};
 		this.containerEl.addClass('diff');
-		this.middleContainer = this.contentEl.createDiv({
-			cls: ['sync-history-middle-container', 'diff'],
-		});
-		this.syncHistoryContentContainer = this.middleContainer.createDiv({
+		this.syncHistoryContentContainer = this.contentEl.createDiv({
 			cls: ['sync-history-content-container', 'diff'],
 		});
 		if (this.plugin.settings.colorBlind) {
 			this.syncHistoryContentContainer.addClass('colorblind');
 		}
-		this.viewMode = 'raw';
+		this.viewMode = 'rendered';
 		this.comp = new Component();
 		this.comp.load();
 		this.createToggleBar();
+		this.diffContentEl = this.syncHistoryContentContainer.createDiv({
+			cls: 'diff-content-container-inner',
+		});
 	}
 
 	onOpen() {
@@ -225,17 +225,17 @@ export default abstract class DiffView extends Modal {
 			return;
 		}
 
-		const toggleBar = this.middleContainer.createDiv({
+		const toggleBar = this.syncHistoryContentContainer.createDiv({
 			cls: 'diff-toggle-bar',
 		});
 
 		const rawButton = toggleBar.createEl('button', {
-			cls: ['diff-toggle-btn', 'is-active'],
+			cls: ['diff-toggle-btn'],
 			text: 'Raw Diff',
 		});
 
 		const renderButton = toggleBar.createEl('button', {
-			cls: ['diff-toggle-btn'],
+			cls: ['diff-toggle-btn', 'is-active'],
 			text: 'Rendered',
 		});
 
@@ -259,15 +259,15 @@ export default abstract class DiffView extends Modal {
 	}
 
 	public async updateDiffView(): Promise<void> {
-		this.syncHistoryContentContainer.empty();
+		this.diffContentEl.empty();
 
 		if (this.isBinaryFile()) {
-			this.syncHistoryContentContainer.innerHTML = this.getDiff();
+			this.diffContentEl.innerHTML = this.getDiff();
 			return;
 		}
 
 		if (this.viewMode === 'raw') {
-			this.syncHistoryContentContainer.innerHTML = this.getDiff();
+			this.diffContentEl.innerHTML = this.getDiff();
 		} else {
 			const decoder = new TextDecoder('utf-8');
 			const leftStr =
@@ -279,10 +279,9 @@ export default abstract class DiffView extends Modal {
 					? decoder.decode(this.rightContent)
 					: this.rightContent;
 
-			const renderedContainer =
-				this.syncHistoryContentContainer.createDiv({
-					cls: 'markdown-rendered-diff',
-				});
+			const renderedContainer = this.diffContentEl.createDiv({
+				cls: 'markdown-rendered-diff',
+			});
 
 			const leftSide = renderedContainer.createDiv({
 				cls: 'markdown-side',
@@ -322,7 +321,7 @@ export default abstract class DiffView extends Modal {
 
 		// add history lists and diff to DOM
 		this.contentEl.appendChild(this.leftHistory[0]);
-		this.contentEl.appendChild(this.middleContainer);
+		this.contentEl.appendChild(this.syncHistoryContentContainer);
 		this.contentEl.appendChild(this.rightHistory[0]);
 
 		this.updateDiffView();
