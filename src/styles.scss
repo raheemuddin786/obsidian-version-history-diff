@@ -732,15 +732,17 @@ mode from @SlRvb, which fall under the same license (MIT license, @kometenstaub 
 				margin-bottom: 1em;
 			}
 
-			del.diff-rendered-deleted {
+			.diff-rendered-deleted {
 				background-color: var(--sync-delete-bg);
 				color: var(--text-normal);
-				text-decoration: line-through;
 				padding: 0 2px;
 				border-radius: 2px;
 			}
+			del.diff-rendered-deleted {
+				text-decoration: line-through;
+			}
 
-			ins.diff-rendered-added {
+			.diff-rendered-added {
 				background-color: var(--sync-insert-bg);
 				color: var(--text-normal);
 				text-decoration: none;

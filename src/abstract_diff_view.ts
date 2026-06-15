@@ -327,6 +327,33 @@ export default abstract class DiffView extends Modal {
 
 			const diffResult = diffArrays(leftTokens, rightTokens);
 
+			const addClassToTag = (tag: string, className: string): string => {
+				if (tag.startsWith('</')) {
+					return tag;
+				}
+				const classMatch = tag.match(/class=["']([^"']*)["']/);
+				if (classMatch) {
+					const existingClasses = classMatch[1];
+					const newClasses = existingClasses
+						? `${existingClasses} ${className}`
+						: className;
+					return tag.replace(
+						/class=["']([^"']*)["']/,
+						`class="${newClasses}"`
+					);
+				} else {
+					const tagNameMatch = tag.match(/^<\w+/);
+					if (tagNameMatch) {
+						const tagName = tagNameMatch[0];
+						return tag.replace(
+							tagName,
+							`${tagName} class="${className}"`
+						);
+					}
+				}
+				return tag;
+			};
+
 			const leftDiffHtmlParts: string[] = [];
 			const rightDiffHtmlParts: string[] = [];
 
@@ -334,7 +361,9 @@ export default abstract class DiffView extends Modal {
 				if (change.added) {
 					for (const token of change.value) {
 						if (token.startsWith('<')) {
-							rightDiffHtmlParts.push(token);
+							rightDiffHtmlParts.push(
+								addClassToTag(token, 'diff-rendered-added')
+							);
 						} else {
 							rightDiffHtmlParts.push(
 								`<ins class="diff-rendered-added">${token}</ins>`
@@ -344,7 +373,9 @@ export default abstract class DiffView extends Modal {
 				} else if (change.removed) {
 					for (const token of change.value) {
 						if (token.startsWith('<')) {
-							leftDiffHtmlParts.push(token);
+							leftDiffHtmlParts.push(
+								addClassToTag(token, 'diff-rendered-deleted')
+							);
 						} else {
 							leftDiffHtmlParts.push(
 								`<del class="diff-rendered-deleted">${token}</del>`
