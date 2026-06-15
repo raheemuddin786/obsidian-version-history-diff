@@ -175,8 +175,22 @@ export default abstract class DiffView extends Modal {
 			rightStr as string
 		);
 
-		// create HTML from diff
-		const diff = html(uDiff, this.htmlConfig);
+		// create HTML from diff with performance optimization for larger files
+		const config: Diff2HtmlConfig = { ...this.htmlConfig };
+		const maxLength = Math.max(
+			typeof leftStr === 'string' ? leftStr.length : 0,
+			typeof rightStr === 'string' ? rightStr.length : 0
+		);
+
+		if (maxLength > 40000) {
+			config.matching = 'none';
+		} else {
+			// @ts-expect-error matching is a valid option in newer diff2html types
+			config.matching = 'words';
+			config.matchingMaxComparisons = 1000;
+		}
+
+		const diff = html(uDiff, config);
 		return diff;
 	}
 
